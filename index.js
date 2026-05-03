@@ -35,7 +35,10 @@ const db = mysql.createConnection({
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'task_manager_db',
-    port: process.env.DB_PORT || 3306
+    port: process.env.DB_PORT || 3306,
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
 
 db.connect(err => {
@@ -171,9 +174,9 @@ app.post('/api/profile/:userId/upload', upload.single('image'), (req, res) => {
 app.get('/api/dashboard/:userId', (req, res) => {
     const sql = `SELECT 
         COUNT(*) as total, 
-        SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) as in_progress,
-        SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed
+        IFNULL(SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END), 0) as pending,
+        IFNULL(SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END), 0) as in_progress,
+        IFNULL(SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END), 0) as completed
         FROM tasks WHERE userId = ?`;
     db.query(sql, [req.params.userId], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
