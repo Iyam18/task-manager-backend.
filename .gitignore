@@ -1,5 +1,6 @@
 node_modules/
 .env
 server.log
+init-cloud-db.js
 uploads/*
 !uploads/.gitkeep
