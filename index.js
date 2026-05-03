@@ -184,6 +184,14 @@ app.get('/api/dashboard/:userId', (req, res) => {
     });
 });
 
+// --- DEBUG ENDPOINT: SEE ALL USERS ---
+app.get('/api/debug/users', (req, res) => {
+    db.query('SELECT id, username, email, createdAt FROM users', (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, users: results });
+    });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`API Server is running on port ${PORT}`);
