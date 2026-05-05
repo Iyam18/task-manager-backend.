@@ -29,8 +29,8 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// 1. Database Connection
-const db = mysql.createConnection({
+// 1. Database Connection Pool (Handles reconnections automatically)
+const db = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
@@ -38,45 +38,43 @@ const db = mysql.createConnection({
     port: process.env.DB_PORT || 3306,
     ssl: {
         rejectUnauthorized: false
-    }
+    },
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
-db.connect(err => {
+// CREATE TABLES AUTOMATICALLY ON STARTUP
+const initSchema = `
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    profileImage VARCHAR(255) DEFAULT NULL,
+    bio TEXT DEFAULT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    userId INT,
+    title VARCHAR(255) NULL,
+    description TEXT NULL,
+    status VARCHAR(50) DEFAULT 'Pending',
+    priority VARCHAR(50) DEFAULT 'Medium',
+    dueDate DATE DEFAULT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+);
+`;
+
+db.query(initSchema, (err) => {
     if (err) {
-        console.error('Error connecting to MySQL:', err);
-        return;
+        console.error('Error initializing database tables:', err.message);
+    } else {
+        console.log('MySQL Connected and tables are ready.');
     }
-    console.log('MySQL Connected successfully...');
-
-    // CREATE TABLES AUTOMATICALLY ON STARTUP
-    const initSchema = `
-    CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        username VARCHAR(255) UNIQUE NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        profileImage VARCHAR(255) DEFAULT NULL,
-        bio TEXT DEFAULT NULL,
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS tasks (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        userId INT,
-        title VARCHAR(255) NULL,
-        description TEXT NULL,
-        status VARCHAR(50) DEFAULT 'Pending',
-        priority VARCHAR(50) DEFAULT 'Medium',
-        dueDate DATE DEFAULT NULL,
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-    );
-    `;
-
-    db.query(initSchema, (err) => {
-        if (err) console.error('Error initializing database tables:', err.message);
-        else console.log('Database tables are ready (Auto-initialized).');
-    });
 });
 
 // --- AUTHENTICATION ENDPOINTS ---
